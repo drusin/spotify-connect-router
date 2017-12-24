@@ -27,3 +27,4 @@ nbdist/
 /classes/
 
 spotify_connect_router_UUID
+application.properties
