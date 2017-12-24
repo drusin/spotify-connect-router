@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>Redirect</title>
+</head>
+<body>
+<div id="success-message">Success?</div>
+<div><a href="setup.html">Go to setup</a></div>
+<div><a href="index.html">Back to login</a></div>
+
+<script>
+	document.getElementById("success-message").innerHTML = window.location.search.substr(1).replace(/%20/g, " ");
+</script>
+</body>
+</html>
