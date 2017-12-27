@@ -1,10 +1,5 @@
 const table = document.getElementsByTagName("table")[0];
 const template = document.getElementById("template-row");
-const uuidInput = document.getElementById("uuid");
-
-function uuid() {
-	return "?uuid=" + uuidInput.value;
-}
 
 function saveAlias(id, alias) {
 	$.ajax({
@@ -34,8 +29,8 @@ function play(alias) {
 
 function displayDevices() {
 	const oldRows = document.getElementsByClassName("row");
-	for (let i = 0; i < oldRows.length; i++) {
-		table.removeChild(oldRows[i]);
+	while (oldRows.length > 0) {
+		table.removeChild(oldRows[0]);
 	}
 	$.get("/devices" + uuid()).done(response => {
 		JSON.parse(response).devices.forEach(device => {

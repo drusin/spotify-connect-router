@@ -4,7 +4,12 @@
 	<title>Login to Spotify</title>
 </head>
 <body>
-<a href="/login">Login to spotify</a>
+<div>UUID: <input type="text" id="uuid"><input type="checkbox" id="remember-uuid" name="remember-check"><label for="remember-uuid">Store UUID in cookie for further use?</label></div>
+<a id="login">Login to spotify</a>
+<script src="cookie.js"></script>
+<script>
+	document.getElementById("login").href = "/login" + uuid();
+</script>
 </body>
 </html>
 
