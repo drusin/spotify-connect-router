@@ -96,6 +96,7 @@ public class Controller {
 			System.out.println("Refreshed token successfully!");
 		} catch (IOException e) {
 			System.err.println("Could not refresh token");
+			System.err.println(stringHttpResponse.getStatus() + " " + stringHttpResponse.getStatusText() + " " + stringHttpResponse.getBody());
 		}
 	}
 
@@ -153,5 +154,24 @@ public class Controller {
 	@RequestMapping(path = "/alias", method = RequestMethod.GET)
 	public List<AliasDeviceMapping> getAliases() {
 		return StreamSupport.stream(aliasRepository.findAll().spliterator(), false).collect(Collectors.toList());
+	}
+
+	@RequestMapping(path = "pause", method = RequestMethod.PUT)
+	public void pause(@RequestParam("uuid") UUID uuid) throws Exception {
+		if (!uuid.equals(ConnectRouterApplication.getUuid())) {
+			return;
+		}
+		HttpResponse<String> request = Unirest.put("https://api.spotify.com/v1/me/player/pause")
+				.header("Authorization", "Bearer " + tokenRepository.findOne(0).getAccessToken())
+				.asString();
+		if (request.getStatus() != 204) {
+			if (request.getStatus() == 401 && !retrying) {
+				retrying = true;
+				reauthenticate();
+				pause(uuid);
+			}
+			System.err.println("Error trying to pause playback: " + request.getStatus() + " " + request.getStatusText() + " " + request.getBody());
+		}
+		retrying = false;
 	}
 }
