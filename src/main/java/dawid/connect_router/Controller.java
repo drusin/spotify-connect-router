@@ -36,7 +36,10 @@ public class Controller {
 	private boolean retrying = false;
 
 	@RequestMapping(path = "/login", method = RequestMethod.GET)
-	public RedirectView login() {
+	public RedirectView login(@RequestParam("uuid") UUID uuid) {
+		if (!ConnectRouterApplication.getUuid().equals(uuid)) {
+			return null;
+		}
 		String url = "https://accounts.spotify.com/authorize?client_id="
 				+ clientId
 				+ "&response_type=code"
@@ -63,18 +66,23 @@ public class Controller {
 				tokenRepository.delete(0);
 			}
 			tokenRepository.save(token);
+			System.out.println("Logged in succesfully!");
+			retrying = false;
 			return new RedirectView("/redirected.html?Logged in succesfully");
 		} catch (IOException e) {
+			System.err.println("Login failed");
 			return new RedirectView("/redirected.html?Something went wrong, try again");
 		}
 	}
 
-	public RedirectView reauthenticate() throws Exception {
+	public void reauthenticate() throws Exception {
+		System.out.println("Trying to refresh the token!");
+		String refreshToken = tokenRepository.findOne(0).getRefreshToken();
 		MultipartBody multipartBody = Unirest.post("https://accounts.spotify.com/api/token")
 				.field("client_id", clientId)
 				.field("client_secret", clientSecret)
 				.field("grant_type", "refresh_token")
-				.field("refresh_token", tokenRepository.findOne(0).getRefreshToken());
+				.field("refresh_token", refreshToken);
 		HttpResponse<String> stringHttpResponse = multipartBody
 				.asString();
 		ObjectMapper objectMapper = new ObjectMapper();
@@ -83,28 +91,30 @@ public class Controller {
 			if (tokenRepository.findOne(0) != null) {
 				tokenRepository.delete(0);
 			}
+			token.setRefreshToken(refreshToken);
 			tokenRepository.save(token);
-			return new RedirectView("/redirected.html?Logged in succesfully");
+			System.out.println("Refreshed token successfully!");
 		} catch (IOException e) {
-			return new RedirectView("/redirected.html?Something went wrong, try again");
+			System.err.println("Could not refresh token");
 		}
 	}
 
 	@RequestMapping(path = "/devices", method = RequestMethod.GET)
-	public String devices(@RequestParam("uuid") String uuid) throws Exception {
-		if (!ConnectRouterApplication.getUuid().toString().equals(uuid)) {
+	public String devices(@RequestParam("uuid") UUID uuid) throws Exception {
+		if (!ConnectRouterApplication.getUuid().equals(uuid)) {
 			return null;
 		}
 		HttpResponse<JsonNode> request = Unirest.get("https://api.spotify.com/v1/me/player/devices")
 				.header("Authorization", "Bearer " + tokenRepository.findOne(0).getAccessToken())
 				.asJson();
 		if (request.getStatus() != 200) {
-			if (!retrying) {
+			if (request.getStatus() == 401 && !retrying) {
 				retrying = true;
 				reauthenticate();
-				devices(uuid);
+				return devices(uuid);
 			}
-			return "Cannot authenticate, try logging in again!";
+			System.err.println("Error trying to get devices: " + request.getStatus() + " " + request.getStatusText() + " " + request.getBody());
+			return "Cannot get devices " + request.getStatus() + " " + request.getStatusText() + " " + request.getBody();
 		}
 		retrying = false;
 		return request.getBody().toString();
@@ -120,17 +130,17 @@ public class Controller {
 				.body("{\"device_ids\": [\"" + aliasRepository.findOne(alias.alias.trim()).deviceId + "\"]}")
 				.asString();
 		if (request.getStatus() != 204) {
-			if (!retrying) {
+			if (request.getStatus() == 401 && !retrying) {
 				retrying = true;
 				reauthenticate();
-				transferPlayback(uuid, alias);
+				return transferPlayback(uuid, alias);
 			}
-			return "Cannot authenticate, try logging in again!";
+			System.err.println("Error trying to transfer playback: " + request.getStatus() + " " + request.getStatusText() + " " + request.getBody());
+			return "Cannot transfer playback " + request.getStatus() + " " + request.getStatusText() + " " + request.getBody();
 		}
 		retrying = false;
 		return Integer.toString(request.getStatus());
 	}
-
 
 	@RequestMapping(path = "/alias", method = RequestMethod.PUT)
 	public void setAlias(@RequestParam("uuid") UUID uuid, @RequestBody AliasDeviceMapping alias) {

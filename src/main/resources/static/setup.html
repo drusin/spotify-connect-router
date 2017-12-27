@@ -5,7 +5,8 @@
 	<title>Setup</title>
 </head>
 <body>
-<div>UUID: <input type="text" id="uuid"><button id="reload">Reload</button></div>
+<div>UUID: <input type="text" id="uuid"><input type="checkbox" id="remember-uuid" name="remember-check"><label for="remember-uuid">Store UUID in cookie for further use?</label></div>
+<button id="reload">Reload</button>
 <table>
 	<tr>
 		<th>Device name</th>
@@ -21,6 +22,7 @@
 </table>
 
 <script src="jquery-3.2.1.min.js"></script>
+<script src="cookie.js"></script>
 <script src="setup.js"></script>
 </body>
 </html>
