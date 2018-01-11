@@ -21,10 +21,8 @@ public class Controller {
 
 	@Value("${client_id}")
 	private String clientId;
-
 	@Value("${client_secret}")
 	private String clientSecret;
-
 	@Value("${redirect_url}")
 	private String redirectUrl;
 
@@ -57,11 +55,11 @@ public class Controller {
 				.field("grant_type", "authorization_code")
 				.field("code", code)
 				.field("redirect_uri", redirectUrl);
-		HttpResponse<String> stringHttpResponse = multipartBody
+		HttpResponse<String> response = multipartBody
 				.asString();
 		ObjectMapper objectMapper = new ObjectMapper();
 		try {
-			Token token = objectMapper.readValue(stringHttpResponse.getBody(), Token.class);
+			Token token = objectMapper.readValue(response.getBody(), Token.class);
 			if (tokenRepository.findOne(0) != null) {
 				tokenRepository.delete(0);
 			}
@@ -75,7 +73,7 @@ public class Controller {
 		}
 	}
 
-	public void reauthenticate() throws Exception {
+	private void reauthenticate() throws Exception {
 		System.out.println("Trying to refresh the token!");
 		String refreshToken = tokenRepository.findOne(0).getRefreshToken();
 		MultipartBody multipartBody = Unirest.post("https://accounts.spotify.com/api/token")
@@ -83,11 +81,11 @@ public class Controller {
 				.field("client_secret", clientSecret)
 				.field("grant_type", "refresh_token")
 				.field("refresh_token", refreshToken);
-		HttpResponse<String> stringHttpResponse = multipartBody
+		HttpResponse<String> response = multipartBody
 				.asString();
 		ObjectMapper objectMapper = new ObjectMapper();
 		try {
-			Token token = objectMapper.readValue(stringHttpResponse.getBody(), Token.class);
+			Token token = objectMapper.readValue(response.getBody(), Token.class);
 			if (tokenRepository.findOne(0) != null) {
 				tokenRepository.delete(0);
 			}
@@ -96,7 +94,7 @@ public class Controller {
 			System.out.println("Refreshed token successfully!");
 		} catch (IOException e) {
 			System.err.println("Could not refresh token");
-			System.err.println(stringHttpResponse.getStatus() + " " + stringHttpResponse.getStatusText() + " " + stringHttpResponse.getBody());
+			System.err.println(response.getStatus() + " " + response.getStatusText() + " " + response.getBody());
 		}
 	}
 
@@ -105,20 +103,20 @@ public class Controller {
 		if (!ConnectRouterApplication.getUuid().equals(uuid)) {
 			return null;
 		}
-		HttpResponse<JsonNode> request = Unirest.get("https://api.spotify.com/v1/me/player/devices")
+		HttpResponse<JsonNode> response = Unirest.get("https://api.spotify.com/v1/me/player/devices")
 				.header("Authorization", "Bearer " + tokenRepository.findOne(0).getAccessToken())
 				.asJson();
-		if (request.getStatus() != 200) {
-			if (request.getStatus() == 401 && !retrying) {
+		if (response.getStatus() != 200) {
+			if (response.getStatus() == 401 && !retrying) {
 				retrying = true;
 				reauthenticate();
 				return devices(uuid);
 			}
-			System.err.println("Error trying to get devices: " + request.getStatus() + " " + request.getStatusText() + " " + request.getBody());
-			return "Cannot get devices " + request.getStatus() + " " + request.getStatusText() + " " + request.getBody();
+			System.err.println("Error trying to get devices: " + response.getStatus() + " " + response.getStatusText() + " " + response.getBody());
+			return "Cannot get devices " + response.getStatus() + " " + response.getStatusText() + " " + response.getBody();
 		}
 		retrying = false;
-		return request.getBody().toString();
+		return response.getBody().toString();
 	}
 
 	@RequestMapping(path = "/transferPlayback", method = RequestMethod.PUT)
@@ -126,21 +124,21 @@ public class Controller {
 		if (!uuid.equals(ConnectRouterApplication.getUuid())) {
 			return "wrong UUID!";
 		}
-		HttpResponse<String> request = Unirest.put("https://api.spotify.com/v1/me/player")
+		HttpResponse<String> response = Unirest.put("https://api.spotify.com/v1/me/player")
 				.header("Authorization", "Bearer " + tokenRepository.findOne(0).getAccessToken())
 				.body("{\"device_ids\": [\"" + aliasRepository.findOne(alias.alias.trim()).deviceId + "\"]}")
 				.asString();
-		if (request.getStatus() != 204) {
-			if (request.getStatus() == 401 && !retrying) {
+		if (response.getStatus() != 204) {
+			if (response.getStatus() == 401 && !retrying) {
 				retrying = true;
 				reauthenticate();
 				return transferPlayback(uuid, alias);
 			}
-			System.err.println("Error trying to transfer playback: " + request.getStatus() + " " + request.getStatusText() + " " + request.getBody());
-			return "Cannot transfer playback " + request.getStatus() + " " + request.getStatusText() + " " + request.getBody();
+			System.err.println("Error trying to transfer playback: " + response.getStatus() + " " + response.getStatusText() + " " + response.getBody());
+			return "Cannot transfer playback " + response.getStatus() + " " + response.getStatusText() + " " + response.getBody();
 		}
 		retrying = false;
-		return Integer.toString(request.getStatus());
+		return Integer.toString(response.getStatus());
 	}
 
 	@RequestMapping(path = "/alias", method = RequestMethod.PUT)
@@ -161,17 +159,38 @@ public class Controller {
 		if (!uuid.equals(ConnectRouterApplication.getUuid())) {
 			return;
 		}
-		HttpResponse<String> request = Unirest.put("https://api.spotify.com/v1/me/player/pause")
+		HttpResponse<String> response = Unirest.put("https://api.spotify.com/v1/me/player/pause")
 				.header("Authorization", "Bearer " + tokenRepository.findOne(0).getAccessToken())
 				.asString();
-		if (request.getStatus() != 204) {
-			if (request.getStatus() == 401 && !retrying) {
+		if (response.getStatus() != 204) {
+			if (response.getStatus() == 401 && !retrying) {
 				retrying = true;
 				reauthenticate();
 				pause(uuid);
 			}
-			System.err.println("Error trying to pause playback: " + request.getStatus() + " " + request.getStatusText() + " " + request.getBody());
+			System.err.println("Error trying to pause playback: " + response.getStatus() + " " + response.getStatusText() + " " + response.getBody());
 		}
 		retrying = false;
+	}
+
+	@RequestMapping(path = "volume", method = RequestMethod.PUT)
+	public int setVolume(@RequestParam("uuid") UUID uuid, @RequestParam("volume") int volume) throws Exception {
+		if (!uuid.equals(ConnectRouterApplication.getUuid())) {
+			return 0;
+		}
+		HttpResponse<String> response = Unirest.put("https://api.spotify.com/v1/me/player/volume?volume_percent=" + volume)
+				.header("Authorization", "Bearer " + tokenRepository.findOne(0).getAccessToken())
+				.asString();
+		if (response.getStatus() != 204) {
+			if (response.getStatus() == 401 && !retrying) {
+				retrying = true;
+				reauthenticate();
+				return setVolume(uuid, volume);
+			}
+			System.err.println("Error trying to set volume: " + response.getStatus() + " " + response.getStatusText() + " " + response.getBody());
+			return response.getStatus();
+		}
+		retrying = false;
+		return response.getStatus();
 	}
 }
