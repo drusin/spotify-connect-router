@@ -173,6 +173,63 @@ public class Controller {
 		retrying = false;
 	}
 
+	@RequestMapping(path = "play", method = RequestMethod.PUT)
+	public void play(@RequestParam("uuid") UUID uuid) throws Exception {
+		if (!uuid.equals(ConnectRouterApplication.getUuid())) {
+			return;
+		}
+		HttpResponse<String> response = Unirest.put("https://api.spotify.com/v1/me/player/play")
+				.header("Authorization", "Bearer " + tokenRepository.findOne(0).getAccessToken())
+				.asString();
+		if (response.getStatus() != 204) {
+			if (response.getStatus() == 401 && !retrying) {
+				retrying = true;
+				reauthenticate();
+				play(uuid);
+			}
+			System.err.println("Error trying to play: " + response.getStatus() + " " + response.getStatusText() + " " + response.getBody());
+		}
+		retrying = false;
+	}
+
+	@RequestMapping(path = "next", method = RequestMethod.PUT)
+	public void next(@RequestParam("uuid") UUID uuid) throws Exception {
+		if (!uuid.equals(ConnectRouterApplication.getUuid())) {
+			return;
+		}
+		HttpResponse<String> response = Unirest.post("https://api.spotify.com/v1/me/player/next")
+				.header("Authorization", "Bearer " + tokenRepository.findOne(0).getAccessToken())
+				.asString();
+		if (response.getStatus() != 204) {
+			if (response.getStatus() == 401 && !retrying) {
+				retrying = true;
+				reauthenticate();
+				next(uuid);
+			}
+			System.err.println("Error trying to next: " + response.getStatus() + " " + response.getStatusText() + " " + response.getBody());
+		}
+		retrying = false;
+	}
+
+	@RequestMapping(path = "previous", method = RequestMethod.PUT)
+	public void previous(@RequestParam("uuid") UUID uuid) throws Exception {
+		if (!uuid.equals(ConnectRouterApplication.getUuid())) {
+			return;
+		}
+		HttpResponse<String> response = Unirest.post("https://api.spotify.com/v1/me/player/previous")
+				.header("Authorization", "Bearer " + tokenRepository.findOne(0).getAccessToken())
+				.asString();
+		if (response.getStatus() != 204) {
+			if (response.getStatus() == 401 && !retrying) {
+				retrying = true;
+				reauthenticate();
+				previous(uuid);
+			}
+			System.err.println("Error trying to previous: " + response.getStatus() + " " + response.getStatusText() + " " + response.getBody());
+		}
+		retrying = false;
+	}
+
 	@RequestMapping(path = "volume", method = RequestMethod.PUT)
 	public int setVolume(@RequestParam("uuid") UUID uuid, @RequestParam("volume") int volume) throws Exception {
 		if (!uuid.equals(ConnectRouterApplication.getUuid())) {
