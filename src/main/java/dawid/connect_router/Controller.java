@@ -60,8 +60,8 @@ public class Controller {
 		ObjectMapper objectMapper = new ObjectMapper();
 		try {
 			Token token = objectMapper.readValue(response.getBody(), Token.class);
-			if (tokenRepository.findOne(0) != null) {
-				tokenRepository.delete(0);
+			if (tokenRepository.findById(0).isPresent()) {
+				tokenRepository.deleteById(0);
 			}
 			tokenRepository.save(token);
 			System.out.println("Logged in succesfully!");
@@ -75,7 +75,7 @@ public class Controller {
 
 	private void reauthenticate() throws Exception {
 		System.out.println("Trying to refresh the token!");
-		String refreshToken = tokenRepository.findOne(0).getRefreshToken();
+		String refreshToken = tokenRepository.findById(0).get().getRefreshToken();
 		MultipartBody multipartBody = Unirest.post("https://accounts.spotify.com/api/token")
 				.field("client_id", clientId)
 				.field("client_secret", clientSecret)
@@ -86,8 +86,8 @@ public class Controller {
 		ObjectMapper objectMapper = new ObjectMapper();
 		try {
 			Token token = objectMapper.readValue(response.getBody(), Token.class);
-			if (tokenRepository.findOne(0) != null) {
-				tokenRepository.delete(0);
+			if (tokenRepository.findById(0).isPresent()) {
+				tokenRepository.deleteById(0);
 			}
 			token.setRefreshToken(refreshToken);
 			tokenRepository.save(token);
@@ -104,7 +104,7 @@ public class Controller {
 			return null;
 		}
 		HttpResponse<JsonNode> response = Unirest.get("https://api.spotify.com/v1/me/player/devices")
-				.header("Authorization", "Bearer " + tokenRepository.findOne(0).getAccessToken())
+				.header("Authorization", "Bearer " + tokenRepository.findById(0).get().getAccessToken())
 				.asJson();
 		if (response.getStatus() != 200) {
 			if (response.getStatus() == 401 && !retrying) {
@@ -125,8 +125,8 @@ public class Controller {
 			return "wrong UUID!";
 		}
 		HttpResponse<String> response = Unirest.put("https://api.spotify.com/v1/me/player")
-				.header("Authorization", "Bearer " + tokenRepository.findOne(0).getAccessToken())
-				.body("{\"device_ids\": [\"" + aliasRepository.findOne(alias.alias.trim()).deviceId + "\"]}")
+				.header("Authorization", "Bearer " + tokenRepository.findById(0).get().getAccessToken())
+				.body("{\"device_ids\": [\"" + aliasRepository.findById(alias.alias.trim()).get().deviceId + "\"]}")
 				.asString();
 		if (response.getStatus() != 204) {
 			if (response.getStatus() == 401 && !retrying) {
@@ -160,7 +160,7 @@ public class Controller {
 			return;
 		}
 		HttpResponse<String> response = Unirest.put("https://api.spotify.com/v1/me/player/pause")
-				.header("Authorization", "Bearer " + tokenRepository.findOne(0).getAccessToken())
+				.header("Authorization", "Bearer " + tokenRepository.findById(0).get().getAccessToken())
 				.asString();
 		if (response.getStatus() != 204) {
 			if (response.getStatus() == 401 && !retrying) {
@@ -179,7 +179,7 @@ public class Controller {
 			return;
 		}
 		HttpResponse<String> response = Unirest.put("https://api.spotify.com/v1/me/player/play")
-				.header("Authorization", "Bearer " + tokenRepository.findOne(0).getAccessToken())
+				.header("Authorization", "Bearer " + tokenRepository.findById(0).get().getAccessToken())
 				.asString();
 		if (response.getStatus() != 204) {
 			if (response.getStatus() == 401 && !retrying) {
@@ -198,7 +198,7 @@ public class Controller {
 			return;
 		}
 		HttpResponse<String> response = Unirest.post("https://api.spotify.com/v1/me/player/next")
-				.header("Authorization", "Bearer " + tokenRepository.findOne(0).getAccessToken())
+				.header("Authorization", "Bearer " + tokenRepository.findById(0).get().getAccessToken())
 				.asString();
 		if (response.getStatus() != 204) {
 			if (response.getStatus() == 401 && !retrying) {
@@ -217,7 +217,7 @@ public class Controller {
 			return;
 		}
 		HttpResponse<String> response = Unirest.post("https://api.spotify.com/v1/me/player/previous")
-				.header("Authorization", "Bearer " + tokenRepository.findOne(0).getAccessToken())
+				.header("Authorization", "Bearer " + tokenRepository.findById(0).get().getAccessToken())
 				.asString();
 		if (response.getStatus() != 204) {
 			if (response.getStatus() == 401 && !retrying) {
@@ -236,7 +236,7 @@ public class Controller {
 			return 0;
 		}
 		HttpResponse<String> response = Unirest.put("https://api.spotify.com/v1/me/player/volume?volume_percent=" + volume)
-				.header("Authorization", "Bearer " + tokenRepository.findOne(0).getAccessToken())
+				.header("Authorization", "Bearer " + tokenRepository.findById(0).get().getAccessToken())
 				.asString();
 		if (response.getStatus() != 204) {
 			if (response.getStatus() == 401 && !retrying) {
